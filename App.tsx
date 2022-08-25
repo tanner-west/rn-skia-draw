@@ -23,8 +23,6 @@ import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 
 interface IPath {
   segments: String[];
-  started: boolean;
-  ended: boolean;
   color?: string;
 }
 
@@ -57,9 +55,8 @@ export default function App() {
   const [circles, setCircles] = useState<ICircle[]>([]);
   const [stamps, setStamps] = useState<IStamp[]>([]);
 
-  // After adding reanimated, I ran into errors with runOnJS: false.
-  // This is obviously not ideal in terms of performance.
-  // Any tips to solve this would be appreciated!
+  // When Reanimated is installed, Gesture Handler will try to run on the UI thread
+  // We can't do that here because we're accessing the component state, so we need set runOnJS(true)
   const pan = Gesture.Pan()
     .runOnJS(true)
     .onStart((g) => {
@@ -67,34 +64,25 @@ export default function App() {
         const newPaths = [...paths];
         newPaths[paths.length] = {
           segments: [],
-          started: true,
-          ended: false,
           color: paletteColors[activePaletteColorIndex],
         };
         newPaths[paths.length].segments.push(`M ${g.x} ${g.y}`);
         setPaths(newPaths);
       }
     })
-    .onTouchesMove((g) => {
+    .onUpdate((g) => {
       if (activeTool === Tools.Pencil) {
         const index = paths.length - 1;
         const newPaths = [...paths];
-        if (
-          newPaths?.[index]?.segments &&
-          newPaths[index].started === true &&
-          newPaths[index].ended === false
-        ) {
-          newPaths[index].segments.push(
-            `L ${g.changedTouches[0].x} ${g.changedTouches[0].y}`
-          );
+        if (newPaths?.[index]?.segments) {
+          newPaths[index].segments.push(`L ${g.x} ${g.y}`);
           setPaths(newPaths);
         }
       }
     })
-    .onEnd((g) => {
+    .onTouchesUp((g) => {
       if (activeTool === Tools.Pencil) {
         const newPaths = [...paths];
-        newPaths[paths.length - 1].ended = true;
         setPaths(newPaths);
       }
     })
